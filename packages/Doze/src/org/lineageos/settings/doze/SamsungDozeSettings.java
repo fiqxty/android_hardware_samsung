@@ -1,0 +1,119 @@
+/*
+ * Copyright (C) 2015 The CyanogenMod Project
+ *               2017-2025 The LineageOS Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.lineageos.settings.doze;
+
+import android.os.Bundle;
+import android.os.Handler;
+
+import androidx.preference.Preference;
+import androidx.preference.SwitchPreferenceCompat;
+
+import com.android.settingslib.widget.MainSwitchPreference;
+import com.android.settingslib.widget.SettingsBasePreferenceFragment;
+
+import org.lineageos.internal.util.ScreenType;
+
+public class SamsungDozeSettings extends SettingsBasePreferenceFragment
+        implements Preference.OnPreferenceChangeListener {
+
+    private SwitchPreferenceCompat mAlwaysOnDisplayPreference;
+    private SwitchPreferenceCompat mHandwavePreference;
+    private SwitchPreferenceCompat mPickUpPreference;
+    private SwitchPreferenceCompat mPocketPreference;
+    private SwitchPreferenceCompat mWakeOnGesturePreference;
+
+    private Handler mHandler = new Handler();
+
+    @Override
+    public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
+        setPreferencesFromResource(R.xml.gesture_panel, rootKey);
+
+        boolean dozeEnabled = Utils.isDozeEnabled(getActivity());
+
+        MainSwitchPreference switchBar = findPreference(Utils.DOZE_ENABLE);
+        switchBar.setOnPreferenceChangeListener(this);
+        switchBar.setChecked(dozeEnabled);
+
+        mAlwaysOnDisplayPreference = findPreference(Utils.ALWAYS_ON_DISPLAY);
+        mAlwaysOnDisplayPreference.setEnabled(dozeEnabled);
+        mAlwaysOnDisplayPreference.setChecked(Utils.isAlwaysOnEnabled(getActivity()));
+        mAlwaysOnDisplayPreference.setOnPreferenceChangeListener(this);
+
+        mHandwavePreference = findPreference(Utils.GESTURE_HAND_WAVE_KEY);
+        mHandwavePreference.setEnabled(dozeEnabled);
+        mHandwavePreference.setOnPreferenceChangeListener(this);
+
+        mPickUpPreference = findPreference(Utils.GESTURE_PICK_UP_KEY);
+        mPickUpPreference.setEnabled(dozeEnabled);
+        mPickUpPreference.setOnPreferenceChangeListener(this);
+
+        mPocketPreference = findPreference(Utils.GESTURE_POCKET_KEY);
+        mPocketPreference.setEnabled(dozeEnabled);
+        mPocketPreference.setOnPreferenceChangeListener(this);
+
+        mWakeOnGesturePreference = findPreference(Utils.WAKE_ON_GESTURE_KEY);
+        mWakeOnGesturePreference.setEnabled(dozeEnabled);
+        mWakeOnGesturePreference.setOnPreferenceChangeListener(this);
+
+        // Hide AOD if not supported and set all its dependents otherwise
+        if (!Utils.alwaysOnDisplayAvailable(getActivity())) {
+            getPreferenceScreen().removePreference(mAlwaysOnDisplayPreference);
+        } else {
+            mHandwavePreference.setDependency(Utils.ALWAYS_ON_DISPLAY);
+            mPickUpPreference.setDependency(Utils.ALWAYS_ON_DISPLAY);
+            mPocketPreference.setDependency(Utils.ALWAYS_ON_DISPLAY);
+            mWakeOnGesturePreference.setDependency(Utils.ALWAYS_ON_DISPLAY);
+        }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+
+        // If running on a phone, remove padding around the listview
+        if (!ScreenType.isTablet(getContext())) {
+            getListView().setPadding(0, 0, 0, 0);
+        }
+    }
+
+    @Override
+    public boolean onPreferenceChange(Preference preference, Object newValue) {
+        boolean isChecked = (Boolean) newValue;
+        if (Utils.ALWAYS_ON_DISPLAY.equals(preference.getKey())) {
+            Utils.enableAlwaysOn(getActivity(), isChecked);
+        } else if (Utils.DOZE_ENABLE.equals(preference.getKey())) {
+            Utils.enableDoze(getActivity(), isChecked);
+            Utils.checkDozeService(getActivity());
+
+            if (!isChecked) {
+                Utils.enableAlwaysOn(getActivity(), false);
+                mAlwaysOnDisplayPreference.setChecked(false);
+            }
+            mAlwaysOnDisplayPreference.setEnabled(isChecked);
+
+            mHandwavePreference.setEnabled(isChecked);
+            mPickUpPreference.setEnabled(isChecked);
+            mPocketPreference.setEnabled(isChecked);
+            mWakeOnGesturePreference.setEnabled(isChecked);
+        }
+
+        mHandler.post(() -> Utils.checkDozeService(getActivity()));
+
+        return true;
+    }
+}

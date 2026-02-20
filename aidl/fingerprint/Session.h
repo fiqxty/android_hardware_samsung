@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 The LineageOS Project
+ * Copyright (C) 2024-2026 The LineageOS Project
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -16,6 +16,7 @@
 
 #define FINGERPRINT_DATA_DIR "/data/vendor/biometrics/fp/User_%d/"
 
+using ::aidl::android::hardware::biometrics::common::DisplayState;
 using ::aidl::android::hardware::biometrics::common::ICancellationSignal;
 using ::aidl::android::hardware::biometrics::common::OperationContext;
 using ::aidl::android::hardware::biometrics::fingerprint::PointerContext;
@@ -30,7 +31,7 @@ namespace fingerprint {
 void onClientDeath(void* cookie);
 
 class Session : public BnSession {
-public:
+  public:
     Session(LegacyHAL hal, int userId, std::shared_ptr<ISessionCallback> cb,
             LockoutTracker lockoutTracker);
     ndk::ScopedAStatus generateChallenge() override;
@@ -39,8 +40,7 @@ public:
                               std::shared_ptr<ICancellationSignal>* out) override;
     ndk::ScopedAStatus authenticate(int64_t operationId,
                                     std::shared_ptr<ICancellationSignal>* out) override;
-    ndk::ScopedAStatus detectInteraction(
-            std::shared_ptr<ICancellationSignal>* out) override;
+    ndk::ScopedAStatus detectInteraction(std::shared_ptr<ICancellationSignal>* out) override;
     ndk::ScopedAStatus enumerateEnrollments() override;
     ndk::ScopedAStatus removeEnrollments(const std::vector<int32_t>& enrollmentIds) override;
     ndk::ScopedAStatus getAuthenticatorId() override;
@@ -51,15 +51,13 @@ public:
                                      float major) override;
     ndk::ScopedAStatus onPointerUp(int32_t pointerId) override;
     ndk::ScopedAStatus onUiReady() override;
-    ndk::ScopedAStatus authenticateWithContext(
-            int64_t operationId, const OperationContext& context,
-            std::shared_ptr<ICancellationSignal>* out) override;
-    ndk::ScopedAStatus enrollWithContext(
-            const HardwareAuthToken& hat, const OperationContext& context,
-            std::shared_ptr<ICancellationSignal>* out) override;
+    ndk::ScopedAStatus authenticateWithContext(int64_t operationId, const OperationContext& context,
+                                               std::shared_ptr<ICancellationSignal>* out) override;
+    ndk::ScopedAStatus enrollWithContext(const HardwareAuthToken& hat,
+                                         const OperationContext& context,
+                                         std::shared_ptr<ICancellationSignal>* out) override;
     ndk::ScopedAStatus detectInteractionWithContext(
-            const OperationContext& context,
-            std::shared_ptr<ICancellationSignal>* out) override;
+            const OperationContext& context, std::shared_ptr<ICancellationSignal>* out) override;
     ndk::ScopedAStatus onPointerDownWithContext(const PointerContext& context) override;
     ndk::ScopedAStatus onPointerUpWithContext(const PointerContext& context) override;
     ndk::ScopedAStatus onContextChanged(const OperationContext& context) override;
@@ -69,11 +67,10 @@ public:
     ndk::ScopedAStatus cancel();
     binder_status_t linkToDeath(AIBinder* binder);
     bool isClosed();
-    void notify(
-        const fingerprint_msg_t* msg);
+    void notify(const fingerprint_msg_t* msg);
     void onCaptureReady();
 
-private:
+  private:
     LegacyHAL mHal;
     LockoutTracker mLockoutTracker;
     bool mClosed = false;
@@ -100,10 +97,12 @@ private:
 
     // Binder death handler.
     AIBinder_DeathRecipient* mDeathRecipient;
+
+    DisplayState mDisplayState;
 };
 
-} // namespace fingerprint
-} // namespace biometrics
-} // namespace hardware
-} // namespace android
-} // namespace aidl
+}  // namespace fingerprint
+}  // namespace biometrics
+}  // namespace hardware
+}  // namespace android
+}  // namespace aidl

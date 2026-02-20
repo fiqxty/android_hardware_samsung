@@ -1,0 +1,8 @@
+on fs
+    mkdir /mnt/vendor/efs/spen 0770 system system
+
+service vendor.spen-default /vendor/bin/hw/vendor.samsung.hardware.spen-service
+    class hal
+    user system
+    group system
+    shutdown critical
